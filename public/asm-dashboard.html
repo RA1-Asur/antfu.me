@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ASM Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Mono&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#34d399;--g2:#059669;
+  --bg:#0d0d0d;--card:#161616;--border:#252525;
+  --text:#f5f5f5;--muted:#606060;
+  --red:#f87171;--yellow:#fbbf24;
+}
+body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Google Sans',sans-serif;padding:1.5rem 1rem 5rem}
+header{text-align:center;margin-bottom:2rem}
+header h1{font-size:2rem;font-weight:700;background:linear-gradient(135deg,var(--g),var(--g2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+header p{font-size:0.75rem;color:var(--muted);margin-top:0.3rem}
+
+/* LOGIN */
+#login-screen{display:flex;flex-direction:column;align-items:center;margin-top:1rem}
+.login-card{width:100%;max-width:440px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:1.8rem;display:flex;flex-direction:column;gap:1.2rem}
+.login-card h2{font-size:1.1rem;font-weight:700;color:var(--g)}
+.login-card p{font-size:0.78rem;color:var(--muted);line-height:1.8}
+.login-card a{color:var(--g)}
+
+/* TABS */
+.tabs{display:flex;gap:0.5rem;margin-bottom:1.5rem;overflow-x:auto;padding-bottom:0.2rem;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:0.55rem 1rem;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-family:'Google Sans',sans-serif;font-size:0.8rem;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.2s}
+.tab.active{background:linear-gradient(135deg,var(--g),var(--g2));color:#000;border-color:transparent;font-weight:700}
+
+.panel{display:none;flex-direction:column;gap:1rem}
+.panel.active{display:flex}
+
+/* CARD */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.3rem;display:flex;flex-direction:column;gap:1rem}
+label{font-size:0.7rem;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:0.35rem}
+input,textarea{width:100%;background:#1e1e1e;border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Google Sans',sans-serif;font-size:0.9rem;padding:0.8rem;outline:none;transition:border-color 0.2s;resize:vertical}
+input:focus,textarea:focus{border-color:var(--g)}
+textarea{min-height:190px}
+.hint{font-size:0.68rem;color:var(--muted);margin-top:0.3rem}
+.hint span{color:var(--g)}
+
+/* BUTTONS */
+.btn{padding:0.9rem;border-radius:12px;border:none;font-family:'Google Sans',sans-serif;font-weight:700;font-size:0.95rem;cursor:pointer;transition:transform 0.1s,opacity 0.2s;width:100%}
+.btn:active{transform:scale(0.97)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-green{background:linear-gradient(135deg,var(--g),var(--g2));color:#000}
+.btn-red{background:#2a1010;color:var(--red);border:1px solid #f8717130}
+.btn-yellow{background:#2a2010;color:var(--yellow);border:1px solid #fbbf2430}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-sm{padding:0.45rem 0.7rem;font-size:0.75rem;border-radius:8px}
+
+/* STATUS */
+.status{font-size:0.78rem;padding:0.8rem;border-radius:10px;display:none;text-align:center;line-height:1.5}
+.status.show{display:block}
+.status.success{background:#0a2a1a;color:var(--g);border:1px solid #34d39930}
+.status.error{background:#2a0a0a;color:var(--red);border:1px solid #f8717130}
+.status.loading{background:#1e1e1e;color:var(--muted);border:1px solid var(--border)}
+
+/* POST ITEMS */
+.post-item{background:#1e1e1e;border:1px solid var(--border);border-radius:12px;padding:1rem;display:flex;flex-direction:column;gap:0.4rem}
+.post-title{font-size:0.95rem;font-weight:700;text-transform:capitalize}
+.post-file{font-size:0.68rem;color:var(--muted);font-family:'Google Sans Mono',monospace}
+.post-actions{display:flex;gap:0.5rem;margin-top:0.3rem}
+.post-actions .btn{flex:1}
+.empty{text-align:center;color:var(--muted);font-size:0.85rem;padding:2.5rem 0}
+
+/* PHOTO GRID */
+.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem}
+.photo-card{background:#1e1e1e;border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.photo-card img{width:100%;height:110px;object-fit:cover;display:block}
+.photo-card-body{padding:0.6rem;flex:1;display:flex;flex-direction:column;gap:0.3rem}
+.photo-card-name{font-size:0.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.photo-card-caption{font-size:0.65rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.photo-card-footer{padding:0.5rem;padding-top:0}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:#000c;z-index:99;overflow-y:auto;padding:1rem}
+.overlay.show{display:flex;align-items:flex-start;justify-content:center}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:1.5rem;width:100%;max-width:580px;display:flex;flex-direction:column;gap:1rem;margin-top:2rem}
+.modal h2{font-size:1rem;font-weight:700;color:var(--g)}
+.btn-row{display:flex;gap:0.5rem}
+.btn-row .btn{flex:1}
+
+.section-title{font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.connected{font-size:0.72rem;color:var(--muted)}
+.logout{font-size:0.7rem;color:var(--red);background:none;border:1px solid #f8717130;border-radius:8px;padding:0.35rem 0.7rem;cursor:pointer;font-family:'Google Sans',sans-serif}
+#dashboard{display:none}
+
+.tip{font-size:0.72rem;color:var(--muted);line-height:1.8;background:#1a1a1a;border:1px solid var(--border);border-radius:10px;padding:0.9rem}
+.tip a{color:var(--g)}
+.tip strong{color:#aaa}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem}
+.row-between{display:flex;justify-content:space-between;align-items:center}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ ASM Dashboard</h1>
+  <p>akshat-med.vercel.app — manage everything here</p>
+</header>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <h2>🔐 Enter GitHub Token</h2>
+    <p>Token is <strong style="color:#f5f5f5">never saved</strong> — only lives while this page is open. Close tab and it's gone.</p>
+    <p>Get token → <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a><br>Tap <strong style="color:#f5f5f5">Generate new token (classic)</strong> → tick <strong style="color:#f5f5f5">repo</strong> → Generate → Copy</p>
+    <div>
+      <label>GitHub Token</label>
+      <input type="password" id="token-input" placeholder="ghp_..."/>
+    </div>
+    <button class="btn btn-green" onclick="login()">🚀 Enter Dashboard</button>
+    <div class="status" id="login-status"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="topbar">
+    <span class="connected">✅ Connected to GitHub</span>
+    <button class="logout" onclick="logout()">🚪 Logout</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('write',event)">✍️ Write</button>
+    <button class="tab" onclick="switchTab('manage',event)">📋 Posts</button>
+    <button class="tab" onclick="switchTab('photos',event)">📸 Photos</button>
+    <button class="tab" onclick="switchTab('bio',event)">👤 Bio</button>
+  </div>
+
+  <!-- WRITE -->
+  <div class="panel active" id="panel-write">
+    <div class="card">
+      <div class="section-title">New Blog Post</div>
+      <div>
+        <label>Title</label>
+        <input type="text" id="w-title" placeholder="What's on your mind today..." oninput="updateSlug()"/>
+        <div class="hint">Will be saved as: <span id="slug-display">your-title.md</span></div>
+      </div>
+      <div>
+        <label>Content — Markdown supported</label>
+        <textarea id="w-content" placeholder="Write your post here...&#10;&#10;**bold**  _italic_  # Heading&#10;- bullet point&#10;[link](https://url.com)"></textarea>
+      </div>
+      <button class="btn btn-green" id="postBtn" onclick="postBlog()">🚀 Publish Post</button>
+      <div class="status" id="w-status"></div>
+    </div>
+  </div>
+
+  <!-- POSTS -->
+  <div class="panel" id="panel-manage">
+    <div class="card">
+      <div class="row-between">
+        <div class="section-title">Your Posts</div>
+        <button class="btn btn-outline btn-sm" onclick="loadPosts()">🔄 Refresh</button>
+      </div>
+      <div id="posts-list"><div class="empty">Loading...</div></div>
+      <div class="status" id="m-status"></div>
+    </div>
+  </div>
+
+  <!-- PHOTOS -->
+  <div class="panel" id="panel-photos">
+    <div class="card">
+      <div class="section-title">Add New Photo</div>
+      <div class="tip">
+        📤 <strong>How to get a free photo link:</strong><br>
+        Go to <a href="https://imgur.com/upload" target="_blank">imgur.com/upload</a> → upload photo → tap the photo → copy link ending in <strong>.jpg</strong><br><br>
+        Or use <a href="https://postimages.org" target="_blank">postimages.org</a> → upload → copy <strong>Direct link</strong>
+      </div>
+      <div>
+        <label>Photo URL</label>
+        <input type="url" id="p-url" placeholder="https://i.imgur.com/XXXXX.jpg"/>
+      </div>
+      <div class="row2">
+        <div>
+          <label>Title</label>
+          <input type="text" id="p-title" placeholder="My Photo"/>
+        </div>
+        <div>
+          <label>Title Link (optional)</label>
+          <input type="url" id="p-link" placeholder="https://..."/>
+        </div>
+      </div>
+      <div>
+        <label>Caption (optional)</label>
+        <input type="text" id="p-caption" placeholder="Where or when this was taken..."/>
+      </div>
+      <button class="btn btn-green" id="addPhotoBtn" onclick="addPhoto()">📸 Add Photo</button>
+      <div class="status" id="p-status"></div>
+    </div>
+
+    <div class="card">
+      <div class="row-between">
+        <div class="section-title">Your Photos</div>
+        <button class="btn btn-outline btn-sm" onclick="loadPhotos()">🔄 Refresh</button>
+      </div>
+      <div id="photos-grid" class="photo-grid">
+        <div class="empty" style="grid-column:span 2">Loading...</div>
+      </div>
+      <div class="status" id="pg-status"></div>
+    </div>
+  </div>
+
+  <!-- BIO -->
+  <div class="panel" id="panel-bio">
+    <div class="card">
+      <div class="section-title">Edit Homepage Bio</div>
+      <div>
+        <label>pages/index.md</label>
+        <textarea id="bio-content" style="min-height:320px" placeholder="Loading..."></textarea>
+      </div>
+      <button class="btn btn-green" onclick="saveBio()">💾 Save Bio</button>
+      <div class="status" id="bio-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="editModal">
+  <div class="modal">
+    <h2>✏️ Edit Post</h2>
+    <div>
+      <label>Title</label>
+      <input type="text" id="edit-title"/>
+    </div>
+    <div>
+      <label>Content</label>
+      <textarea id="edit-content" style="min-height:260px"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green" onclick="saveEdit()">💾 Save</button>
+    </div>
+    <div class="status" id="edit-status"></div>
+  </div>
+</div>
+
+<script>
+const REPO='RA1-Asur/antfu.me',BRANCH='main',API='https://api.github.com',PF='photos/data.ts'
+let T='',ef=null,es=null,bs=null,ps=null
+
+async function login(){
+  const t=document.getElementById('token-input').value.trim()
+  if(!t)return ss('login-status','❌ Paste your token!','error')
+  ss('login-status','⏳ Verifying...','loading')
+  try{
+    const r=await fetch(`${API}/repos/${REPO}`,{headers:{Authorization:`token ${t}`}})
+    if(r.ok){T=t;document.getElementById('login-screen').style.display='none';document.getElementById('dashboard').style.display='block';loadPosts()}
+    else ss('login-status','❌ Invalid token! Try again.','error')
+  }catch{ss('login-status','❌ Network error!','error')}
+}
+
+function logout(){T='';document.getElementById('token-input').value='';document.getElementById('login-screen').style.display='flex';document.getElementById('dashboard').style.display='none'}
+
+function slug(t){return t.toLowerCase().replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-')||'my-post'}
+function date(){return new Date().toISOString().split('T')[0]}
+function ss(id,msg,type){const e=document.getElementById(id);e.textContent=msg;e.className='status show '+type;if(type==='success')setTimeout(()=>e.className='status',4000)}
+function updateSlug(){document.getElementById('slug-display').textContent=slug(document.getElementById('w-title').value)+'.md'}
+async function gf(path,method='GET',body=null){const o={method,headers:{Authorization:`token ${T}`,'Content-Type':'application/json'}};if(body)o.body=JSON.stringify(body);return fetch(`${API}/repos/${REPO}/contents/${path}`,o)}
+function enc(s){return btoa(unescape(encodeURIComponent(s)))}
+function dec(b){return decodeURIComponent(escape(atob(b.replace(/\n/g,''))))}
+
+function switchTab(name,e){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'))
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'))
+  e.target.classList.add('active')
+  document.getElementById('panel-'+name).classList.add('active')
+  if(name==='manage')loadPosts()
+  if(name==='bio')loadBio()
+  if(name==='photos')loadPhotos()
+}
+
+function closeModal(){document.getElementById('editModal').classList.remove('show');ef=null;es=null}
+
+// WRITE
+async function postBlog(){
+  const title=document.getElementById('w-title').value.trim(),content=document.getElementById('w-content').value.trim()
+  if(!title)return ss('w-status','❌ Add a title!','error')
+  if(!content)return ss('w-status','❌ Write something!','error')
+  document.getElementById('postBtn').disabled=true
+  ss('w-status','⏳ Publishing...','loading')
+  try{
+    const r=await gf(`pages/posts/${slug(title)}.md`,'PUT',{message:`blog: add "${title}"`,content:enc(`---\ntitle: ${title}\ndate: ${date()}\n---\n\n${content}`),branch:BRANCH})
+    if(r.ok){ss('w-status','✅ Published! Live in ~1 min at akshat-med.vercel.app/posts','success');document.getElementById('w-title').value='';document.getElementById('w-content').value='';updateSlug()}
+    else{const e=await r.json();ss('w-status','❌ '+(e.message||'Error'),'error')}
+  }catch{ss('w-status','❌ Network error!','error')}
+  document.getElementById('postBtn').disabled=false
+}
+
+// POSTS
+async function loadPosts(){
+  document.getElementById('posts-list').innerHTML='<div class="empty">Loading...</div>'
+  try{
+    const r=await gf('pages/posts');if(!r.ok)throw 0
+    const files=await r.json(),mds=files.filter(f=>f.name.endsWith('.md'))
+    if(!mds.length){document.getElementById('posts-list').innerHTML='<div class="empty">No posts yet! Write your first one ✍️</div>';return}
+    document.getElementById('posts-list').innerHTML=mds.map(f=>`
+      <div class="post-item">
+        <div class="post-title">${f.name.replace('.md','').replace(/-/g,' ')}</div>
+        <div class="post-file">${f.name}</div>
+        <div class="post-actions">
+          <button class="btn btn-yellow btn-sm" onclick="openEdit('${f.path}')">✏️ Edit</button>
+          <button class="btn btn-red btn-sm" onclick="delPost('${f.path}','${f.name}','${f.sha}')">🗑️ Delete</button>
+        </div>
+      </div>`).join('')
+  }catch{document.getElementById('posts-list').innerHTML='<div class="empty">❌ Could not load posts</div>'}
+}
+
+async function openEdit(path){
+  ef=path;ss('edit-status','⏳ Loading...','loading');document.getElementById('editModal').classList.add('show')
+  try{
+    const r=await gf(path),d=await r.json();es=d.sha
+    const raw=dec(d.content),m=raw.match(/---\ntitle: (.+)\ndate: .+\n---\n\n([\s\S]*)/)
+    if(m){document.getElementById('edit-title').value=m[1];document.getElementById('edit-content').value=m[2]}
+    else document.getElementById('edit-content').value=raw
+    document.getElementById('edit-status').className='status'
+  }catch{ss('edit-status','❌ Could not load','error')}
+}
+
+async function saveEdit(){
+  const title=document.getElementById('edit-title').value.trim(),content=document.getElementById('edit-content').value.trim()
+  if(!title||!content)return ss('edit-status','❌ Fill all fields!','error')
+  ss('edit-status','⏳ Saving...','loading')
+  try{
+    const r=await gf(ef,'PUT',{message:`blog: update "${title}"`,content:enc(`---\ntitle: ${title}\ndate: ${date()}\n---\n\n${content}`),sha:es,branch:BRANCH})
+    if(r.ok){ss('edit-status','✅ Saved!','success');setTimeout(()=>{closeModal();loadPosts()},1500)}
+    else{const e=await r.json();ss('edit-status','❌ '+(e.message||'Error'),'error')}
+  }catch{ss('edit-status','❌ Network error!','error')}
+}
+
+async function delPost(path,name,sha){
+  if(!confirm(`Delete "${name.replace('.md','').replace(/-/g,' ')}"? Cannot be undone!`))return
+  ss('m-status','⏳ Deleting...','loading')
+  try{
+    const r=await gf(path,'DELETE',{message:`blog: delete "${name}"`,sha,branch:BRANCH})
+    if(r.ok){ss('m-status','✅ Deleted!','success');loadPosts()}
+    else{const e=await r.json();ss('m-status','❌ '+(e.message||'Error'),'error')}
+  }catch{ss('m-status','❌ Network error!','error')}
+}
+
+// PHOTOS
+async function getPhotos(){
+  const r=await gf(PF),d=await r.json();ps=d.sha
+  const raw=dec(d.content),m=raw.match(/const photos: Photo\[\] = \[([\s\S]*?)\]/)
+  if(!m||!m[1].trim())return[]
+  const photos=[],rx=/\{([^}]+)\}/g;let x
+  while((x=rx.exec(m[1]))!==null){const o={},pairs=x[1].matchAll(/(\w+):\s*'([^']*)'/g);for(const p of pairs)o[p[1]]=p[2];if(o.url)photos.push(o)}
+  return photos
+}
+
+function buildTs(photos){
+  const rows=photos.map(p=>{let l=`  { name: '${p.name}', url: '${p.url}'`;if(p.text)l+=`, text: '${p.text}'`;if(p.link)l+=`, link: '${p.link}'`;return l+' },'}).join('\n')
+  return `export interface Photo {\n  name: string\n  url: string\n  text?: string\n  link?: string\n}\n\nconst photos: Photo[] = [\n${rows}\n]\n\nexport default photos\n`
+}
+
+async function loadPhotos(){
+  document.getElementById('photos-grid').innerHTML='<div class="empty" style="grid-column:span 2">Loading...</div>'
+  try{
+    const photos=await getPhotos()
+    if(!photos.length){document.getElementById('photos-grid').innerHTML='<div class="empty" style="grid-column:span 2">No photos yet! Add your first one 📸</div>';return}
+    document.getElementById('photos-grid').innerHTML=photos.map((p,i)=>`
+      <div class="photo-card">
+        <img src="${p.url}" alt="${p.name}" onerror="this.style.background='#252525';this.style.height='60px'"/>
+        <div class="photo-card-body">
+          <div class="photo-card-name">${p.name}</div>
+          ${p.text?`<div class="photo-card-caption">${p.text}</div>`:''}
+          ${p.link?`<div class="photo-card-caption">🔗 linked</div>`:''}
+        </div>
+        <div class="photo-card-footer">
+          <button class="btn btn-red btn-sm" style="width:100%" onclick="delPhoto(${i})">🗑️ Delete</button>
+        </div>
+      </div>`).join('')
+  }catch{document.getElementById('photos-grid').innerHTML='<div class="empty" style="grid-column:span 2">❌ Could not load photos</div>'}
+}
+
+async function addPhoto(){
+  const url=document.getElementById('p-url').value.trim()
+  const title=document.getElementById('p-title').value.trim()
+  const link=document.getElementById('p-link').value.trim()
+  const caption=document.getElementById('p-caption').value.trim()
+  if(!url)return ss('p-status','❌ Add a photo URL!','error')
+  if(!title)return ss('p-status','❌ Add a title!','error')
+  ss('p-status','⏳ Adding photo...','loading')
+  document.getElementById('addPhotoBtn').disabled=true
+  try{
+    const photos=await getPhotos()
+    const np={name:title,url}
+    if(caption)np.text=caption
+    if(link)np.link=link
+    photos.unshift(np)
+    const r=await gf(PF,'PUT',{message:`photos: add "${title}"`,content:enc(buildTs(photos)),sha:ps,branch:BRANCH})
+    if(r.ok){
+      ss('p-status','✅ Photo added! Live in ~1 min','success')
+      document.getElementById('p-url').value=''
+      document.getElementById('p-title').value=''
+      document.getElementById('p-link').value=''
+      document.getElementById('p-caption').value=''
+      setTimeout(loadPhotos,800)
+    }else{const e=await r.json();ss('p-status','❌ '+(e.message||'Error'),'error')}
+  }catch{ss('p-status','❌ Network error!','error')}
+  document.getElementById('addPhotoBtn').disabled=false
+}
+
+async function delPhoto(i){
+  if(!confirm('Delete this photo? Cannot be undone!'))return
+  ss('pg-status','⏳ Deleting...','loading')
+  try{
+    const photos=await getPhotos(),name=photos[i]?.name||'photo'
+    photos.splice(i,1)
+    const r=await gf(PF,'PUT',{message:`photos: remove "${name}"`,content:enc(buildTs(photos)),sha:ps,branch:BRANCH})
+    if(r.ok){ss('pg-status','✅ Deleted!','success');loadPhotos()}
+    else{const e=await r.json();ss('pg-status','❌ '+(e.message||'Error'),'error')}
+  }catch{ss('pg-status','❌ Network error!','error')}
+}
+
+// BIO
+async function loadBio(){
+  document.getElementById('bio-content').value='Loading...'
+  try{const r=await gf('pages/index.md'),d=await r.json();bs=d.sha;document.getElementById('bio-content').value=dec(d.content)}
+  catch{document.getElementById('bio-content').value='❌ Could not load bio'}
+}
+
+async function saveBio(){
+  const content=document.getElementById('bio-content').value
+  if(!bs)return ss('bio-status','❌ Bio not loaded yet!','error')
+  ss('bio-status','⏳ Saving...','loading')
+  try{
+    const r=await gf('pages/index.md','PUT',{message:'update: homepage bio',content:enc(content),sha:bs,branch:BRANCH})
+    if(r.ok){ss('bio-status','✅ Bio saved! Live in ~1 min','success');loadBio()}
+    else{const e=await r.json();ss('bio-status','❌ '+(e.message||'Error'),'error')}
+  }catch{ss('bio-status','❌ Network error!','error')}
+}
+
+document.getElementById('token-input').addEventListener('keydown',e=>{if(e.key==='Enter')login()})
+</script>
+</body>
+</html>
