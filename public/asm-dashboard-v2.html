@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ASM Dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:ital@0;1&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #38ef7d; --green2: #11998e;
+      --bg: #0a0a0a; --card: #111; --border: #222;
+      --text: #f0f0f0; --muted: #555;
+      --red: #ef4444; --yellow: #f59e0b; --blue: #60a5fa;
+    }
+    body { min-height:100vh; background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; padding:1.5rem 1rem 4rem; }
+    header { text-align:center; margin-bottom:1.5rem; }
+    header h1 { font-family:'Syne',sans-serif; font-weight:800; font-size:1.8rem; background:linear-gradient(135deg,var(--green),var(--green2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    header p { font-size:0.7rem; color:var(--muted); margin-top:0.2rem; }
+
+    /* LOGIN */
+    #login-screen { display:flex; flex-direction:column; align-items:center; gap:1rem; margin-top:1rem; }
+    .login-card { width:100%; max-width:420px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:1.5rem; display:flex; flex-direction:column; gap:1rem; }
+    .login-card h2 { font-family:'Syne',sans-serif; font-size:1rem; color:var(--green); }
+    .login-card p { font-size:0.7rem; color:var(--muted); line-height:1.7; }
+    .login-card a { color:var(--green); }
+
+    /* TABS */
+    .tabs { display:flex; gap:0.4rem; margin-bottom:1.5rem; overflow-x:auto; padding-bottom:0.3rem; }
+    .tab { padding:0.5rem 0.8rem; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--muted); font-family:'Space Mono',monospace; font-size:0.7rem; cursor:pointer; white-space:nowrap; transition:all 0.2s; }
+    .tab.active { background:linear-gradient(135deg,var(--green),var(--green2)); color:#000; border-color:transparent; font-weight:bold; }
+    .panel { display:none; flex-direction:column; gap:1rem; }
+    .panel.active { display:flex; }
+
+    /* CARD */
+    .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:1.2rem; display:flex; flex-direction:column; gap:1rem; }
+    label { font-size:0.65rem; color:var(--green); text-transform:uppercase; letter-spacing:0.1em; display:block; margin-bottom:0.3rem; }
+    input, textarea { width:100%; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:8px; color:var(--text); font-family:'Space Mono',monospace; font-size:0.85rem; padding:0.75rem; outline:none; transition:border-color 0.2s; resize:vertical; }
+    input:focus, textarea:focus { border-color:var(--green); }
+    textarea { min-height:180px; }
+    .slug-preview { font-size:0.65rem; color:#444; margin-top:0.3rem; }
+    .slug-preview span { color:var(--green); }
+
+    /* BUTTONS */
+    .btn { padding:0.85rem 1rem; border-radius:10px; border:none; font-family:'Syne',sans-serif; font-weight:800; font-size:0.9rem; cursor:pointer; transition:opacity 0.2s,transform 0.1s; width:100%; }
+    .btn:active { transform:scale(0.98); }
+    .btn:disabled { opacity:0.4; cursor:not-allowed; }
+    .btn-green { background:linear-gradient(135deg,var(--green),var(--green2)); color:#000; }
+    .btn-red { background:#2b0d0d; color:var(--red); border:1px solid #ef444433; }
+    .btn-yellow { background:#2b1f0d; color:var(--yellow); border:1px solid #f59e0b33; }
+    .btn-blue { background:#0d1b2b; color:var(--blue); border:1px solid #60a5fa33; }
+    .btn-outline { background:transparent; color:var(--text); border:1px solid var(--border); }
+
+    /* STATUS */
+    .status { font-size:0.75rem; padding:0.75rem; border-radius:8px; display:none; text-align:center; line-height:1.5; }
+    .status.show { display:block; }
+    .status.success { background:#0d2b1a; color:var(--green); border:1px solid #38ef7d33; }
+    .status.error { background:#2b0d0d; color:var(--red); border:1px solid #ef444433; }
+    .status.loading { background:#1a1a1a; color:#888; border:1px solid #333; }
+
+    /* POSTS */
+    .post-item { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:10px; padding:1rem; display:flex; flex-direction:column; gap:0.5rem; }
+    .post-item-title { font-family:'Syne',sans-serif; font-weight:700; font-size:0.9rem; }
+    .post-item-date { font-size:0.65rem; color:var(--muted); }
+    .post-item-actions { display:flex; gap:0.5rem; margin-top:0.3rem; }
+    .post-item-actions .btn { padding:0.5rem; font-size:0.75rem; border-radius:7px; }
+    .empty { text-align:center; color:var(--muted); font-size:0.8rem; padding:2rem 0; }
+
+    /* PHOTO GRID */
+    .photo-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; }
+    .photo-card { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:10px; overflow:hidden; }
+    .photo-card img { width:100%; height:120px; object-fit:cover; display:block; }
+    .photo-card-info { padding:0.5rem; }
+    .photo-card-title { font-size:0.75rem; font-family:'Syne',sans-serif; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .photo-card-caption { font-size:0.6rem; color:var(--muted); margin-top:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .photo-card-actions { display:flex; gap:0.4rem; padding:0.5rem; padding-top:0; }
+    .photo-card-actions .btn { padding:0.4rem; font-size:0.65rem; border-radius:6px; }
+
+    /* MODAL */
+    .modal-overlay { display:none; position:fixed; inset:0; background:#000000cc; z-index:100; padding:1rem; overflow-y:auto; }
+    .modal-overlay.show { display:flex; align-items:flex-start; justify-content:center; }
+    .modal { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:1.5rem; width:100%; max-width:600px; display:flex; flex-direction:column; gap:1rem; margin-top:2rem; }
+    .modal h2 { font-family:'Syne',sans-serif; font-size:1rem; color:var(--green); }
+    .btn-row { display:flex; gap:0.5rem; }
+    .btn-row .btn { flex:1; }
+    .section-title { font-family:'Syne',sans-serif; font-weight:700; font-size:0.85rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; }
+    .top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+    .logout-btn { font-size:0.65rem; color:var(--red); background:none; border:1px solid #ef444433; border-radius:6px; padding:0.3rem 0.6rem; cursor:pointer; font-family:'Space Mono',monospace; }
+    #dashboard { display:none; }
+
+    .tip { font-size:0.68rem; color:#444; line-height:1.7; background:#161616; border:1px solid #222; border-radius:8px; padding:0.75rem; }
+    .tip strong { color:#666; }
+    .tip a { color:var(--green); }
+
+    .row2 { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ ASM Dashboard</h1>
+  <p>akshat-med.vercel.app — manage everything here</p>
+</header>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <h2>🔐 Enter GitHub Token</h2>
+    <p>Token is <strong style="color:#f0f0f0">never saved</strong> — only lives in memory while page is open.</p>
+    <p>Get token: <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a> → Generate new token (classic) → tick <strong style="color:#f0f0f0">repo</strong> → Generate</p>
+    <div>
+      <label>GitHub Token</label>
+      <input type="password" id="token-input" placeholder="ghp_..." />
+    </div>
+    <button class="btn btn-green" onclick="login()">🚀 Enter Dashboard</button>
+    <div class="status" id="login-status"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="top-bar">
+    <span style="font-size:0.7rem;color:var(--muted);">✅ Connected</span>
+    <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('write',event)">✍️ Write</button>
+    <button class="tab" onclick="switchTab('manage',event)">📋 Posts</button>
+    <button class="tab" onclick="switchTab('photos',event)">📸 Photos</button>
+    <button class="tab" onclick="switchTab('bio',event)">👤 Bio</button>
+  </div>
+
+  <!-- WRITE -->
+  <div class="panel active" id="panel-write">
+    <div class="card">
+      <div class="section-title">New Blog Post</div>
+      <div>
+        <label>Title</label>
+        <input type="text" id="w-title" placeholder="What's on your mind..." oninput="updateSlug()" />
+        <div class="slug-preview">Saved as: <span id="slug-display">your-title.md</span></div>
+      </div>
+      <div>
+        <label>Content (Markdown supported)</label>
+        <textarea id="w-content" placeholder="Write your post here...&#10;&#10;**bold**, _italic_, # Heading, - bullet&#10;[link text](https://url.com)"></textarea>
+      </div>
+      <button class="btn btn-green" id="postBtn" onclick="postBlog()">🚀 Publish Post</button>
+      <div class="status" id="w-status"></div>
+    </div>
+  </div>
+
+  <!-- MANAGE POSTS -->
+  <div class="panel" id="panel-manage">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="section-title">Your Posts</div>
+        <button class="btn btn-outline" style="width:auto;padding:0.4rem 0.8rem;font-size:0.7rem;" onclick="loadPosts()">🔄 Refresh</button>
+      </div>
+      <div id="posts-list"><div class="empty">Loading...</div></div>
+      <div class="status" id="m-status"></div>
+    </div>
+  </div>
+
+  <!-- PHOTOS -->
+  <div class="panel" id="panel-photos">
+
+    <!-- Add Photo -->
+    <div class="card">
+      <div class="section-title">Add New Photo</div>
+
+      <div class="tip">
+        📤 <strong>How to get a free photo link:</strong><br>
+        Go to <a href="https://imgur.com/upload" target="_blank">imgur.com/upload</a> → upload photo → right-click image → Copy image address (ends in .jpg)<br><br>
+        Or use <a href="https://postimages.org" target="_blank">postimages.org</a> → upload → copy Direct Link
+      </div>
+
+      <div>
+        <label>Photo URL (from Imgur / Postimages)</label>
+        <input type="url" id="p-url" placeholder="https://i.imgur.com/XXXXX.jpg" />
+      </div>
+
+      <div class="row2">
+        <div>
+          <label>Title</label>
+          <input type="text" id="p-title" placeholder="My Photo" />
+        </div>
+        <div>
+          <label>Title Link (optional)</label>
+          <input type="url" id="p-link" placeholder="https://..." />
+        </div>
+      </div>
+
+      <div>
+        <label>Caption (optional)</label>
+        <input type="text" id="p-caption" placeholder="Where/when this was taken..." />
+      </div>
+
+      <button class="btn btn-green" id="addPhotoBtn" onclick="addPhoto()">📸 Add Photo</button>
+      <div class="status" id="p-status"></div>
+    </div>
+
+    <!-- Photo List -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="section-title">Your Photos</div>
+        <button class="btn btn-outline" style="width:auto;padding:0.4rem 0.8rem;font-size:0.7rem;" onclick="loadPhotos()">🔄 Refresh</button>
+      </div>
+      <div id="photos-grid" class="photo-grid"><div class="empty" style="grid-column:span 2">Loading...</div></div>
+      <div class="status" id="pg-status"></div>
+    </div>
+
+  </div>
+
+  <!-- BIO -->
+  <div class="panel" id="panel-bio">
+    <div class="card">
+      <div class="section-title">Edit Homepage Bio</div>
+      <div>
+        <label>index.md</label>
+        <textarea id="bio-content" style="min-height:300px;" placeholder="Loading..."></textarea>
+      </div>
+      <button class="btn btn-green" onclick="saveBio()">💾 Save Bio</button>
+      <div class="status" id="bio-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT POST MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h2>✏️ Edit Post</h2>
+    <div>
+      <label>Title</label>
+      <input type="text" id="edit-title" />
+    </div>
+    <div>
+      <label>Content</label>
+      <textarea id="edit-content" style="min-height:250px;"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="closeModal('editModal')">Cancel</button>
+      <button class="btn btn-green" onclick="saveEdit()">💾 Save</button>
+    </div>
+    <div class="status" id="edit-status"></div>
+  </div>
+</div>
+
+<script>
+  const REPO = 'RA1-Asur/antfu.me'
+  const BRANCH = 'main'
+  const API = 'https://api.github.com'
+  const PHOTOS_FILE = 'photos/data.ts'
+
+  let TOKEN = ''
+  let editingFile = null, editingSha = null, bioSha = null, photosSha = null
+
+  // ── AUTH ──
+  async function login() {
+    const t = document.getElementById('token-input').value.trim()
+    if (!t) return setStatus('login-status','❌ Paste your token!','error')
+    setStatus('login-status','⏳ Verifying...','loading')
+    try {
+      const res = await fetch(`${API}/repos/${REPO}`, { headers:{ 'Authorization':`token ${t}` } })
+      if (res.ok) {
+        TOKEN = t
+        document.getElementById('login-screen').style.display = 'none'
+        document.getElementById('dashboard').style.display = 'block'
+        loadPosts()
+      } else {
+        setStatus('login-status','❌ Invalid token! Try again.','error')
+      }
+    } catch(e) { setStatus('login-status','❌ Network error!','error') }
+  }
+
+  function logout() {
+    TOKEN = ''
+    document.getElementById('token-input').value = ''
+    document.getElementById('login-screen').style.display = 'flex'
+    document.getElementById('dashboard').style.display = 'none'
+  }
+
+  // ── HELPERS ──
+  function toSlug(t) { return t.toLowerCase().replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-')||'my-post' }
+  function getDate() { return new Date().toISOString().split('T')[0] }
+  function setStatus(id,msg,type) {
+    const el = document.getElementById(id)
+    el.textContent = msg; el.className = 'status show '+type
+    if (type==='success') setTimeout(()=>el.className='status',4000)
+  }
+  function updateSlug() { document.getElementById('slug-display').textContent = toSlug(document.getElementById('w-title').value)+'.md' }
+  async function ghFetch(path,method='GET',body=null) {
+    const opts = { method, headers:{ 'Authorization':`token ${TOKEN}`,'Content-Type':'application/json' } }
+    if (body) opts.body = JSON.stringify(body)
+    return fetch(`${API}/repos/${REPO}/contents/${path}`,opts)
+  }
+  function encode(s) { return btoa(unescape(encodeURIComponent(s))) }
+  function decode(b64) { return decodeURIComponent(escape(atob(b64.replace(/\n/g,'')))) }
+
+  function switchTab(name,e) {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'))
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'))
+    e.target.classList.add('active')
+    document.getElementById('panel-'+name).classList.add('active')
+    if (name==='manage') loadPosts()
+    if (name==='bio') loadBio()
+    if (name==='photos') loadPhotos()
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('show')
+    editingFile = null; editingSha = null
+  }
+
+  // ── WRITE ──
+  async function postBlog() {
+    const title = document.getElementById('w-title').value.trim()
+    const content = document.getElementById('w-content').value.trim()
+    if (!title) return setStatus('w-status','❌ Add a title!','error')
+    if (!content) return setStatus('w-status','❌ Write something!','error')
+    const path = `pages/posts/${toSlug(title)}.md`
+    const fc = `---\ntitle: ${title}\ndate: ${getDate()}\n---\n\n${content}`
+    document.getElementById('postBtn').disabled = true
+    setStatus('w-status','⏳ Publishing...','loading')
+    try {
+      const res = await ghFetch(path,'PUT',{ message:`blog: add "${title}"`, content:encode(fc), branch:BRANCH })
+      if (res.ok) {
+        setStatus('w-status','✅ Published! Live in ~1 min at akshat-med.vercel.app/posts','success')
+        document.getElementById('w-title').value = ''
+        document.getElementById('w-content').value = ''
+        updateSlug()
+      } else { const e=await res.json(); setStatus('w-status','❌ '+(e.message||'Error'),'error') }
+    } catch(e) { setStatus('w-status','❌ Network error!','error') }
+    document.getElementById('postBtn').disabled = false
+  }
+
+  // ── MANAGE POSTS ──
+  async function loadPosts() {
+    document.getElementById('posts-list').innerHTML = '<div class="empty">Loading...</div>'
+    try {
+      const res = await ghFetch('pages/posts')
+      if (!res.ok) throw new Error()
+      const files = await res.json()
+      const mds = files.filter(f=>f.name.endsWith('.md'))
+      if (!mds.length) { document.getElementById('posts-list').innerHTML='<div class="empty">No posts yet! ✍️</div>'; return }
+      document.getElementById('posts-list').innerHTML = mds.map(f=>`
+        <div class="post-item">
+          <div class="post-item-title">${f.name.replace('.md','').replace(/-/g,' ')}</div>
+          <div class="post-item-date">${f.name}</div>
+          <div class="post-item-actions">
+            <button class="btn btn-yellow" onclick="openEdit('${f.path}')">✏️ Edit</button>
+            <button class="btn btn-red" onclick="deletePost('${f.path}','${f.name}','${f.sha}')">🗑️ Delete</button>
+          </div>
+        </div>`).join('')
+    } catch(e) { document.getElementById('posts-list').innerHTML='<div class="empty">❌ Could not load</div>' }
+  }
+
+  async function openEdit(path) {
+    editingFile = path
+    setStatus('edit-status','⏳ Loading...','loading')
+    document.getElementById('editModal').classList.add('show')
+    try {
+      const res = await ghFetch(path)
+      const data = await res.json()
+      editingSha = data.sha
+      const raw = decode(data.content)
+      const match = raw.match(/---\ntitle: (.+)\ndate: .+\n---\n\n([\s\S]*)/)
+      if (match) { document.getElementById('edit-title').value=match[1]; document.getElementById('edit-content').value=match[2] }
+      else { document.getElementById('edit-content').value=raw }
+      document.getElementById('edit-status').className='status'
+    } catch(e) { setStatus('edit-status','❌ Could not load','error') }
+  }
+
+  async function saveEdit() {
+    const title=document.getElementById('edit-title').value.trim()
+    const content=document.getElementById('edit-content').value.trim()
+    if (!title||!content) return setStatus('edit-status','❌ Fill all fields!','error')
+    setStatus('edit-status','⏳ Saving...','loading')
+    const fc=`---\ntitle: ${title}\ndate: ${getDate()}\n---\n\n${content}`
+    try {
+      const res=await ghFetch(editingFile,'PUT',{ message:`blog: update "${title}"`, content:encode(fc), sha:editingSha, branch:BRANCH })
+      if (res.ok) { setStatus('edit-status','✅ Saved!','success'); setTimeout(()=>{ closeModal('editModal'); loadPosts() },1500) }
+      else { const e=await res.json(); setStatus('edit-status','❌ '+(e.message||'Error'),'error') }
+    } catch(e) { setStatus('edit-status','❌ Network error!','error') }
+  }
+
+  async function deletePost(path,name,sha) {
+    const title=name.replace('.md','').replace(/-/g,' ')
+    if (!confirm(`Delete "${title}"? Cannot be undone!`)) return
+    setStatus('m-status','⏳ Deleting...','loading')
+    try {
+      const res=await ghFetch(path,'DELETE',{ message:`blog: delete "${title}"`, sha, branch:BRANCH })
+      if (res.ok) { setStatus('m-status','✅ Deleted!','success'); loadPosts() }
+      else { const e=await res.json(); setStatus('m-status','❌ '+(e.message||'Error'),'error') }
+    } catch(e) { setStatus('m-status','❌ Network error!','error') }
+  }
+
+  // ── PHOTOS ──
+  async function getPhotosData() {
+    const res = await ghFetch(PHOTOS_FILE)
+    const data = await res.json()
+    photosSha = data.sha
+    const raw = decode(data.content)
+    // Extract array from data.ts
+    const match = raw.match(/const photos: Photo\[\] = \[([\s\S]*?)\]/)
+    if (!match) return []
+    const inner = match[1].trim()
+    if (!inner) return []
+    // Parse each photo object
+    const photos = []
+    const regex = /\{([^}]+)\}/g
+    let m
+    while ((m = regex.exec(inner)) !== null) {
+      const obj = {}
+      const pairs = m[1].matchAll(/(\w+):\s*'([^']*)'/g)
+      for (const p of pairs) obj[p[1]] = p[2]
+      if (obj.url) photos.push(obj)
+    }
+    return photos
+  }
+
+  function buildDataTs(photos) {
+    const entries = photos.map(p => {
+      let line = `  { name: '${p.name}', url: '${p.url}'`
+      if (p.text) line += `, text: '${p.text}'`
+      if (p.link) line += `, link: '${p.link}'`
+      line += ` },`
+      return line
+    }).join('\n')
+
+    return `export interface Photo {
+  name: string
+  url: string
+  text?: string
+  link?: string
+}
+
+const photos: Photo[] = [
+${entries}
+]
+
+export default photos
+`
+  }
+
+  async function loadPhotos() {
+    document.getElementById('photos-grid').innerHTML = '<div class="empty" style="grid-column:span 2">Loading...</div>'
+    try {
+      const photos = await getPhotosData()
+      if (!photos.length) {
+        document.getElementById('photos-grid').innerHTML = '<div class="empty" style="grid-column:span 2">No photos yet! Add your first one 📸</div>'
+        return
+      }
+      document.getElementById('photos-grid').innerHTML = photos.map((p,i) => `
+        <div class="photo-card">
+          <img src="${p.url}" alt="${p.name}" onerror="this.style.display='none'" />
+          <div class="photo-card-info">
+            <div class="photo-card-title">${p.name||'Untitled'}</div>
+            ${p.text ? `<div class="photo-card-caption">${p.text}</div>` : ''}
+            ${p.link ? `<div class="photo-card-caption">🔗 ${p.link}</div>` : ''}
+          </div>
+          <div class="photo-card-actions">
+            <button class="btn btn-red" onclick="deletePhoto(${i})">🗑️</button>
+          </div>
+        </div>`).join('')
+    } catch(e) {
+      document.getElementById('photos-grid').innerHTML = '<div class="empty" style="grid-column:span 2">❌ Could not load</div>'
+    }
+  }
+
+  async function addPhoto() {
+    const url = document.getElementById('p-url').value.trim()
+    const title = document.getElementById('p-title').value.trim()
+    const link = document.getElementById('p-link').value.trim()
+    const caption = document.getElementById('p-caption').value.trim()
+
+    if (!url) return setStatus('p-status','❌ Add a photo URL!','error')
+    if (!title) return setStatus('p-status','❌ Add a title!','error')
+
+    setStatus('p-status','⏳ Adding photo...','loading')
+    document.getElementById('addPhotoBtn').disabled = true
+
+    try {
+      const photos = await getPhotosData()
+      const slug = toSlug(title)
+      const newPhoto = { name: title, url }
+      if (caption) newPhoto.text = caption
+      if (link) newPhoto.link = link
+      photos.unshift(newPhoto) // add to top
+
+      const res = await ghFetch(PHOTOS_FILE,'PUT',{
+        message: `photos: add "${title}"`,
+        content: encode(buildDataTs(photos)),
+        sha: photosSha,
+        branch: BRANCH
+      })
+
+      if (res.ok) {
+        setStatus('p-status','✅ Photo added! Live in ~1 min','success')
+        document.getElementById('p-url').value = ''
+        document.getElementById('p-title').value = ''
+        document.getElementById('p-link').value = ''
+        document.getElementById('p-caption').value = ''
+        setTimeout(loadPhotos, 1000)
+      } else {
+        const e = await res.json()
+        setStatus('p-status','❌ '+(e.message||'Error'),'error')
+      }
+    } catch(e) { setStatus('p-status','❌ Network error!','error') }
+    document.getElementById('addPhotoBtn').disabled = false
+  }
+
+  async function deletePhoto(index) {
+    if (!confirm('Delete this photo? Cannot be undone!')) return
+    setStatus('pg-status','⏳ Deleting...','loading')
+    try {
+      const photos = await getPhotosData()
+      const name = photos[index]?.name || 'photo'
+      photos.splice(index, 1)
+      const res = await ghFetch(PHOTOS_FILE,'PUT',{
+        message: `photos: remove "${name}"`,
+        content: encode(buildDataTs(photos)),
+        sha: photosSha,
+        branch: BRANCH
+      })
+      if (res.ok) { setStatus('pg-status','✅ Deleted!','success'); loadPhotos() }
+      else { const e=await res.json(); setStatus('pg-status','❌ '+(e.message||'Error'),'error') }
+    } catch(e) { setStatus('pg-status','❌ Network error!','error') }
+  }
+
+  // ── BIO ──
+  async function loadBio() {
+    document.getElementById('bio-content').value='Loading...'
+    try {
+      const res=await ghFetch('pages/index.md')
+      const data=await res.json()
+      bioSha=data.sha
+      document.getElementById('bio-content').value=decode(data.content)
+    } catch(e) { document.getElementById('bio-content').value='❌ Could not load' }
+  }
+
+  async function saveBio() {
+    const content=document.getElementById('bio-content').value
+    if (!bioSha) return setStatus('bio-status','❌ Load bio first!','error')
+    setStatus('bio-status','⏳ Saving...','loading')
+    try {
+      const res=await ghFetch('pages/index.md','PUT',{ message:'update: homepage bio', content:encode(content), sha:bioSha, branch:BRANCH })
+      if (res.ok) { setStatus('bio-status','✅ Saved! Live in ~1 min','success'); loadBio() }
+      else { const e=await res.json(); setStatus('bio-status','❌ '+(e.message||'Error'),'error') }
+    } catch(e) { setStatus('bio-status','❌ Network error!','error') }
+  }
+
+  document.getElementById('token-input').addEventListener('keydown', e=>{ if(e.key==='Enter') login() })
+</script>
+</body>
+</html>
