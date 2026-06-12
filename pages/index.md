@@ -16,8 +16,8 @@ and proof that I existed between exam seasons.
 I like to watch anime, playing retro games on my phone,
 or overthink in my free time.
 
-I also run a [YouTube channel](https://youtube.com/@yaha_bhi_athens)
-where I post stuff. Subscribe karo — mere views bahut kam hain. 🙏😂
+I also run a [YouTube channel](https://youtube.com/@yaha_bhi_athens) 
+where I post stuff (barely). Subscribe karo — mere views bahut kam hain. 🙏😂
 
 Glad you're here. Stick around! 🙌
 
